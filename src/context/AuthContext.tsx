@@ -47,9 +47,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setError(null);
     
     try {
-      // En un caso real, aquí se haría una llamada a la API
-      // const response = await axios.post('http://localhost:8000/api/auth/login/', { email, password });
-      // const userData = response.data;
+
       
       // Simulación de inicio de sesión para esta prueba
       if (email === 'admin@buynlarge.com' && password === 'admin123') {
