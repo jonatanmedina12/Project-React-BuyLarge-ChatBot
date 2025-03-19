@@ -1,49 +1,121 @@
 // src/components/chatbot/ChatBot.tsx
-import React, { useState, useRef, useEffect } from 'react';
-import { Input, Button, Spin, Avatar, Typography } from 'antd';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Input, Button, Spin, Avatar, Typography, message } from 'antd';
 import { SendOutlined, RobotOutlined, UserOutlined } from '@ant-design/icons';
+import ConversationService, { Message } from '../services/ConversationService';
 
 const { Text } = Typography;
 
-// Definición de tipos para los mensajes
-interface Message {
-  id: string;
-  content: string;
-  sender: 'user' | 'bot';
-  timestamp: Date;
-}
-
+/**
+ * Props interface for the ChatBot component
+ */
 interface ChatBotProps {
+  /** Initial greeting message shown to the user */
   initialMessage?: string;
+  /** Placeholder text for the input field */
   placeholder?: string;
+  /** Callback that fires when a new message is added to the conversation */
   onNewMessage?: (message: Message) => void;
+  /** Custom class name for the container */
+  className?: string;
+  /** Maximum height for the messages container */
+  maxHeight?: number;
+  /** Minimum height for the messages container */
+  minHeight?: number;
 }
 
+/**
+ * ChatBot component that integrates with Django backend and manages conversations
+ * 
+ * @param props - Component props
+ * @returns React component
+ */
 const ChatBot: React.FC<ChatBotProps> = ({
   initialMessage = '¡Hola! Soy el asistente virtual de Buy n Large. ¿En qué puedo ayudarte hoy?',
   placeholder = 'Escribe tu mensaje aquí...',
-  onNewMessage
+  onNewMessage,
+  className = '',
+  maxHeight = 500,
+  minHeight = 300
 }) => {
-  // Estado para los mensajes, entrada del usuario y estado de carga
-  const [messages, setMessages] = useState<Message[]>([
-    {
+  // State management with proper typing
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputValue, setInputValue] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isFetchingHistory, setIsFetchingHistory] = useState<boolean>(true);
+  
+  // Create or retrieve session ID
+  const [sessionId] = useState<string>(
+    ConversationService.getOrCreateSessionId()
+  );
+
+  // Reference for automatic scrolling
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Creates the initial welcome message
+   * @returns Initial bot message
+   */
+  const createInitialMessage = useCallback((): Message => {
+    return {
       id: '1',
       content: initialMessage,
       sender: 'bot',
-      timestamp: new Date(),
-    },
-  ]);
-  const [inputValue, setInputValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  
-  // Referencia para hacer scroll automático
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+      timestamp: new Date()
+    };
+  }, [initialMessage]);
 
-  // Función para enviar mensajes al backend
-  const sendMessage = async () => {
+  /**
+   * Load conversation history from the service
+   */
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadConversationHistory(): Promise<void> {
+      if (!isMounted) return;
+      
+      setIsFetchingHistory(true);
+      try {
+        const history = await ConversationService.getConversationHistory(sessionId);
+        
+        if (isMounted) {
+          if (history && history.length > 0) {
+            setMessages(history);
+          } else {
+            // If no history exists, show initial message
+            setMessages([createInitialMessage()]);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading conversation history:', error);
+        
+        if (isMounted) {
+          // Show initial message if there's an error
+          setMessages([createInitialMessage()]);
+          message.error('No se pudo cargar el historial de conversación');
+        }
+      } finally {
+        if (isMounted) {
+          setIsFetchingHistory(false);
+        }
+      }
+    }
+    
+    loadConversationHistory();
+
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      isMounted = false;
+    };
+  }, [sessionId, createInitialMessage]);
+
+  /**
+   * Sends the user message to the backend for ChatGPT processing
+   */
+  const sendMessage = useCallback(async (): Promise<void> => {
     if (inputValue.trim() === '') return;
     
-    // Crear nuevo mensaje del usuario
+    // Create new user message
     const userMessage: Message = {
       id: Date.now().toString(),
       content: inputValue,
@@ -51,80 +123,31 @@ const ChatBot: React.FC<ChatBotProps> = ({
       timestamp: new Date(),
     };
     
-    // Actualizar estado de mensajes
+    // Update messages state and reset input
     setMessages((prevMessages) => [...prevMessages, userMessage]);
     setInputValue('');
     setIsLoading(true);
     
-    // Notificar al componente padre si es necesario
-    if (onNewMessage) {
-      onNewMessage(userMessage);
-    }
+    // Notify parent component if needed
+    onNewMessage?.(userMessage);
     
     try {
-      // En un caso real, aquí realizaríamos una llamada a la API del backend
-      // const response = await axios.post('http://localhost:8000/api/chatbot/', {
-      //   message: userMessage.content,
-      // });
+      // Send message through the service
+      const botResponse = await ConversationService.sendMessage(userMessage.content, sessionId);
       
-      // Para esta demo, simularemos respuestas
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Simular diferentes respuestas según la consulta del usuario
-      let botResponse = '';
-      const lowerCaseMessage = userMessage.content.toLowerCase();
-      
-      if (lowerCaseMessage.includes('computadora') || lowerCaseMessage.includes('laptop')) {
-        if (lowerCaseMessage.includes('cuántas') || lowerCaseMessage.includes('disponibles')) {
-          botResponse = 'En este momento, tenemos 4 computadoras; 2 son HP, 1 es Dell y otra es Apple. ¿Cuál te gustaría conocer más a fondo?';
-        } else if (lowerCaseMessage.includes('dell')) {
-          botResponse = 'La laptop Dell Inspiron tiene un procesador Intel Core i3, 8GB de RAM, y 256GB de almacenamiento SSD. Su precio es de $749.99 y tenemos 8 unidades disponibles. ¿Te gustaría conocer más detalles?';
-        } else if (lowerCaseMessage.includes('hp')) {
-          botResponse = 'Las laptops HP Pavilion tienen procesadores Intel Core i5, 8GB de RAM, y 512GB de almacenamiento SSD. El precio es de $899.99 y tenemos 15 unidades disponibles. Son ideales para trabajo y estudios.';
-        } else if (lowerCaseMessage.includes('apple') || lowerCaseMessage.includes('macbook')) {
-          botResponse = 'El MacBook Air cuenta con el chip M1 de Apple, 8GB de RAM unificada y 256GB de almacenamiento SSD. Su precio es de $1099.99 y tenemos 5 unidades disponibles. Es ultra ligero y tiene una excelente duración de batería.';
-        } else {
-          botResponse = 'Tenemos varias computadoras disponibles de marcas como HP, Dell y Apple. ¿De cuál te gustaría saber más información?';
-        }
-      } else if (lowerCaseMessage.includes('teléfono') || lowerCaseMessage.includes('celular') || lowerCaseMessage.includes('smartphone')) {
-        if (lowerCaseMessage.includes('samsung')) {
-          botResponse = 'El Samsung Galaxy S22 cuenta con un procesador Snapdragon 8 Gen 1, 8GB de RAM y 128GB de almacenamiento. Su precio es de $799.99 y tenemos 20 unidades disponibles. Tiene una excelente cámara.';
-        } else if (lowerCaseMessage.includes('iphone') || lowerCaseMessage.includes('apple')) {
-          botResponse = 'El iPhone 14 viene con el chip A16 Bionic, 6GB de RAM y 128GB de almacenamiento. Su precio es de $899.99 y tenemos 12 unidades disponibles. Es uno de nuestros productos más vendidos.';
-        } else {
-          botResponse = 'Contamos con smartphones de Samsung y Apple. ¿De cuál marca te gustaría más información?';
-        }
-      } else if (lowerCaseMessage.includes('precio') || lowerCaseMessage.includes('costo') || lowerCaseMessage.includes('valor')) {
-        botResponse = 'Los precios de nuestros productos varían según la categoría y marca. Por ejemplo, las laptops van desde $749.99 hasta $1099.99, y los smartphones desde $799.99 hasta $899.99. ¿De qué producto específico te gustaría saber el precio?';
-      } else if (lowerCaseMessage.includes('hola') || lowerCaseMessage.includes('buenos días') || lowerCaseMessage.includes('buenas tardes')) {
-        botResponse = '¡Hola! Soy el asistente virtual de Buy n Large. Estoy aquí para ayudarte con información sobre nuestros productos tecnológicos. ¿Qué te gustaría saber?';
-      } else if (lowerCaseMessage.includes('gracias') || lowerCaseMessage.includes('thank')) {
-        botResponse = '¡De nada! Estoy aquí para ayudarte. Si tienes más preguntas, no dudes en consultarme.';
-      } else if (lowerCaseMessage.includes('stock') || lowerCaseMessage.includes('inventario') || lowerCaseMessage.includes('disponible')) {
-        botResponse = 'Actualmente tenemos en stock: 28 computadoras, 32 teléfonos, 22 tablets y varios accesorios. ¿Te gustaría información sobre algún producto específico?';
+      if (botResponse) {
+        // Add bot response
+        setMessages((prevMessages) => [...prevMessages, botResponse]);
+        
+        // Notify parent component if needed
+        onNewMessage?.(botResponse);
       } else {
-        botResponse = 'Gracias por tu consulta. Para darte la mejor información, ¿podrías especificar qué tipo de producto te interesa? Tenemos computadoras, teléfonos, tablets y accesorios.';
-      }
-      
-      // Crear mensaje de respuesta del bot
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: botResponse,
-        sender: 'bot',
-        timestamp: new Date(),
-      };
-      
-      // Agregar respuesta del bot
-      setMessages((prevMessages) => [...prevMessages, botMessage]);
-      
-      // Notificar al componente padre si es necesario
-      if (onNewMessage) {
-        onNewMessage(botMessage);
+        throw new Error('No se recibió respuesta del chatbot');
       }
     } catch (error) {
-      console.error('Error al comunicarse con el chatbot:', error);
+      console.error('Error communicating with chatbot:', error);
       
-      // Mensaje de error en caso de fallo
+      // Error message in case of failure
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         content: 'Lo siento, tuve un problema para procesar tu consulta. Por favor, intenta de nuevo más tarde.',
@@ -134,103 +157,156 @@ const ChatBot: React.FC<ChatBotProps> = ({
       
       setMessages((prevMessages) => [...prevMessages, errorMessage]);
       
-      // Notificar al componente padre si es necesario
-      if (onNewMessage) {
-        onNewMessage(errorMessage);
-      }
+      // Notify parent component if needed
+      onNewMessage?.(errorMessage);
+      
+      message.error('Error al comunicarse con el chatbot');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [inputValue, sessionId, onNewMessage]);
   
-  // Manejar entrada del usuario
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  /**
+   * Handle user input changes
+   */
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>): void => {
     setInputValue(e.target.value);
-  };
+  }, []);
   
-  // Manejar envío con Enter
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  /**
+   * Handle submission with Enter key
+   */
+  const handleKeyPress = useCallback((e: React.KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === 'Enter') {
       sendMessage();
     }
-  };
+  }, [sendMessage]);
   
-  // Scroll automático al recibir nuevos mensajes
+  // Automatic scrolling when receiving new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Styles as constants for better organization and reuse
+  const styles = {
+    chatContainer: {
+      display: 'flex',
+      flexDirection: 'column' as const,
+      height: '100%'
+    },
+    messagesContainer: { 
+      flex: 1, 
+      overflowY: 'auto' as const, 
+      padding: '10px',
+      display: 'flex',
+      flexDirection: 'column' as const,
+      gap: '8px',
+      minHeight: `${minHeight}px`, 
+      maxHeight: `${maxHeight}px`
+    },
+    loadingContainer: {
+      display: 'flex', 
+      justifyContent: 'center', 
+      alignItems: 'center', 
+      height: '100%'
+    },
+    messageWrapper: (sender: 'user' | 'bot') => ({
+      display: 'flex',
+      justifyContent: sender === 'user' ? 'flex-end' : 'flex-start',
+      marginBottom: '12px'
+    }),
+    messageBox: (sender: 'user' | 'bot') => ({
+      maxWidth: '80%',
+      backgroundColor: sender === 'user' ? '#e6f7ff' : '#f5f5f5',
+      padding: '12px 16px',
+      borderRadius: sender === 'user' ? '15px 15px 0 15px' : '15px 15px 15px 0',
+      position: 'relative' as const,
+      boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+    }),
+    messageHeader: {
+      display: 'flex', 
+      alignItems: 'center', 
+      marginBottom: '4px'
+    },
+    avatar: (sender: 'user' | 'bot') => ({ 
+      backgroundColor: sender === 'user' ? '#1890ff' : '#52c41a',
+      marginRight: '8px'
+    }),
+    messageContent: {
+      whiteSpace: 'pre-line' as const
+    },
+    timestamp: {
+      fontSize: '12px', 
+      display: 'block', 
+      marginTop: '4px'
+    },
+    inputContainer: {
+      marginTop: '10px', 
+      display: 'flex', 
+      gap: '10px'
+    }
+  };
   
   return (
-    <div className="chat-container">
+    <div className={`chat-container ${className}`} style={styles.chatContainer} data-testid="chat-container">
       <div 
         className="messages-container"
-        style={{ 
-          flex: 1, 
-          overflowY: 'auto', 
-          padding: '10px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px'
-        }}
+        style={styles.messagesContainer}
+        data-testid="messages-container"
       >
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            style={{
-              display: 'flex',
-              justifyContent: message.sender === 'user' ? 'flex-end' : 'flex-start',
-              marginBottom: '12px'
-            }}
-          >
+        {isFetchingHistory ? (
+          <div style={styles.loadingContainer}>
+            <Spin tip="Cargando conversación..." />
+          </div>
+        ) : (
+          messages.map((message) => (
             <div
-              style={{
-                maxWidth: '80%',
-                backgroundColor: message.sender === 'user' ? '#e6f7ff' : '#f5f5f5',
-                padding: '12px 16px',
-                borderRadius: message.sender === 'user' ? '15px 15px 0 15px' : '15px 15px 15px 0',
-                position: 'relative',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
-              }}
+              key={message.id}
+              style={styles.messageWrapper(message.sender)}
+              data-testid={`message-${message.id}`}
             >
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
-                <Avatar 
-                  icon={message.sender === 'user' ? <UserOutlined /> : <RobotOutlined />} 
-                  size="small"
-                  style={{ 
-                    backgroundColor: message.sender === 'user' ? '#1890ff' : '#52c41a',
-                    marginRight: '8px'
-                  }}
-                />
-                <Text strong style={{ fontSize: '14px' }}>
-                  {message.sender === 'user' ? 'Tú' : 'Asistente BnL'}
+              <div style={styles.messageBox(message.sender)}>
+                <div style={styles.messageHeader}>
+                  <Avatar 
+                    icon={message.sender === 'user' ? <UserOutlined /> : <RobotOutlined />} 
+                    size="small"
+                    style={styles.avatar(message.sender)}
+                  />
+                  <Text strong style={{ fontSize: '14px' }}>
+                    {message.sender === 'user' ? 'Tú' : 'Asistente BnL'}
+                  </Text>
+                </div>
+                <div style={styles.messageContent}>{message.content}</div>
+                <Text type="secondary" style={styles.timestamp}>
+                  {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </Text>
               </div>
-              <div>{message.content}</div>
-              <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginTop: '4px' }}>
-                {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </Text>
             </div>
-          </div>
-        ))}
+          ))
+        )}
         <div ref={messagesEndRef} />
       </div>
       
-      <div className="input-container" style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
+      <div className="input-container" style={styles.inputContainer}>
         <Input
           placeholder={placeholder}
           value={inputValue}
           onChange={handleInputChange}
           onKeyPress={handleKeyPress}
-          disabled={isLoading}
+          disabled={isLoading || isFetchingHistory}
           size="large"
           style={{ flex: 1 }}
+          data-testid="chat-input"
+          aria-label="Message input"
         />
         <Button
           type="primary"
           icon={isLoading ? <Spin size="small" /> : <SendOutlined />}
           onClick={sendMessage}
-          disabled={isLoading || inputValue.trim() === ''}
+          disabled={isLoading || inputValue.trim() === '' || isFetchingHistory}
           size="large"
+          data-testid="send-button"
+          aria-label="Send message"
         >
           Enviar
         </Button>

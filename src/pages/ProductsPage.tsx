@@ -29,7 +29,33 @@ const { Title, Text, Paragraph } = Typography;
 const { TabPane } = Tabs;
 const { Search } = Input;
 
-// Definición de tipos para los productos
+// API Base URL - Debe coincidir con tu backend de Django
+const API_BASE_URL = 'https://api.whispererlab.com';
+
+// Definición de interfaces para la API
+interface ProductSpecification {
+  id: number;
+  key: string;
+  value: string;
+}
+
+interface ProductFromAPI {
+  id: number;
+  name: string;
+  description: string;
+  price: string; // Viene como string de la API
+  stock: number;
+  image: string | null;
+  category: number;
+  category_name: string;
+  brand: number;
+  brand_name: string;
+  specifications: ProductSpecification[];
+  created_at: string;
+  updated_at: string;
+}
+
+// Definición para uso interno en el componente
 interface Product {
   id: number;
   name: string;
@@ -39,9 +65,9 @@ interface Product {
   stock: number;
   image: string;
   description: string;
-  specifications: Record<string, string | number>;
-  rating: number;
-  recommendation: 'high' | 'medium' | 'low';
+  specifications: Record<string, string>;
+  rating: number; // Este dato lo simulamos por ahora
+  recommendation: 'high' | 'medium' | 'low'; // Este dato lo simulamos por ahora
 }
 
 const ProductsPage: React.FC = () => {
@@ -52,129 +78,56 @@ const ProductsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Datos de ejemplo (en un proyecto real, estos vendrían de la API de Django)
+  // Cargar productos desde la API de Django
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        // En una implementación real, esta sería la llamada a la API
-        // const response = await axios.get('http://localhost:8000/api/products/');
-        // setAllProducts(response.data);
+        // Updated URL to match the actual endpoint structure
+        const productsUrl = `${API_BASE_URL}/api/products/products/`;
+        console.log(`Fetching products from: ${productsUrl}`);
         
-        // Datos de ejemplo para la prueba
-        const mockProducts: Product[] = [
-          {
-            id: 1,
-            name: "Laptop HP Pavilion",
-            brand: "HP",
-            category: "Computadoras",
-            price: 899.99,
-            stock: 15,
-            image: "https://via.placeholder.com/300x200",
-            description: "Laptop potente para trabajo y estudios con procesador i5.",
-            specifications: {
-              processor: "Intel Core i5",
-              ram: "8GB",
-              storage: "512GB SSD",
-              screen: "15.6 pulgadas"
-            },
-            rating: 4.2,
-            recommendation: 'high'
-          },
-          {
-            id: 2,
-            name: "Laptop Dell Inspiron",
-            brand: "Dell",
-            category: "Computadoras",
-            price: 749.99,
-            stock: 8,
-            image: "https://via.placeholder.com/300x200",
-            description: "Laptop versátil con buen rendimiento y diseño elegante.",
-            specifications: {
-              processor: "Intel Core i3",
-              ram: "8GB",
-              storage: "256GB SSD",
-              screen: "14 pulgadas"
-            },
-            rating: 3.9,
-            recommendation: 'medium'
-          },
-          {
-            id: 3,
-            name: "MacBook Air",
-            brand: "Apple",
-            category: "Computadoras",
-            price: 1099.99,
-            stock: 5,
-            image: "https://via.placeholder.com/300x200",
-            description: "Laptop ultraligera con chip M1 y gran duración de batería.",
-            specifications: {
-              processor: "Apple M1",
-              ram: "8GB",
-              storage: "256GB SSD",
-              screen: "13.3 pulgadas"
-            },
-            rating: 4.8,
-            recommendation: 'high'
-          },
-          {
-            id: 4,
-            name: "Smartphone Samsung Galaxy S22",
-            brand: "Samsung",
-            category: "Teléfonos",
-            price: 799.99,
-            stock: 20,
-            image: "https://via.placeholder.com/300x200",
-            description: "Smartphone de alta gama con excelente cámara.",
-            specifications: {
-              processor: "Snapdragon 8 Gen 1",
-              ram: "8GB",
-              storage: "128GB",
-              screen: "6.1 pulgadas"
-            },
-            rating: 4.5,
-            recommendation: 'medium'
-          },
-          {
-            id: 5,
-            name: "iPhone 14",
-            brand: "Apple",
-            category: "Teléfonos",
-            price: 899.99,
-            stock: 12,
-            image: "https://via.placeholder.com/300x200",
-            description: "El último iPhone con chip A16 Bionic.",
-            specifications: {
-              processor: "A16 Bionic",
-              ram: "6GB",
-              storage: "128GB",
-              screen: "6.1 pulgadas"
-            },
-            rating: 4.7,
-            recommendation: 'high'
-          },
-          {
-            id: 6,
-            name: "Tablet Samsung Galaxy Tab S8",
-            brand: "Samsung",
-            category: "Tablets",
-            price: 649.99,
-            stock: 7,
-            image: "https://via.placeholder.com/300x200",
-            description: "Tablet potente con S Pen incluido.",
-            specifications: {
-              processor: "Snapdragon 8 Gen 1",
-              ram: "8GB",
-              storage: "128GB",
-              screen: "11 pulgadas"
-            },
-            rating: 4.3,
-            recommendation: 'low'
+        // API call with updated URL
+        const response = await axios.get(productsUrl);
+        
+        console.log('Products API response:', response.data);
+        
+        // Rest of the function remains the same
+        const processedProducts: Product[] = response.data.map((item: ProductFromAPI) => {
+          // Convertir especificaciones a formato de registro
+          const specs: Record<string, string> = {};
+          item.specifications.forEach(spec => {
+            specs[spec.key.toLowerCase()] = spec.value;
+          });
+          
+          // Determinar recomendación basada en stock
+          let recommendation: 'high' | 'medium' | 'low' = 'medium';
+          if (item.stock > 10) {
+            recommendation = 'high';
+          } else if (item.stock < 3) {
+            recommendation = 'low';
           }
-        ];
+          
+          // Generar un rating simulado entre 3 y 5
+          const rating = (3 + Math.random() * 2);
+          
+          return {
+            id: item.id,
+            name: item.name,
+            brand: item.brand_name,
+            category: item.category_name,
+            price: parseFloat(item.price),
+            stock: item.stock,
+            image: item.image ? item.image : 'https://via.placeholder.com/300x200?text=Sin+Imagen',
+            description: item.description,
+            specifications: specs,
+            rating: rating,
+            recommendation: recommendation
+          };
+        });
         
-        setAllProducts(mockProducts);
-        setFilteredProducts(mockProducts);
+        setAllProducts(processedProducts);
+        setFilteredProducts(processedProducts);
         
         // Recuperar favoritos del almacenamiento local
         const savedFavorites = localStorage.getItem('favorites');
@@ -183,17 +136,55 @@ const ProductsPage: React.FC = () => {
         }
       } catch (error) {
         console.error('Error al cargar productos:', error);
+        if (axios.isAxiosError(error)) {
+          console.error('URL:', error.config?.url);
+          console.error('Status:', error.response?.status);
+          console.error('Status Text:', error.response?.statusText);
+          console.error('Response Data:', error.response?.data);
+        }
+        
         notification.error({
           message: 'Error',
-          description: 'No se pudieron cargar los productos. Por favor, intenta de nuevo más tarde.'
+          description: 'No se pudieron cargar los productos desde el servidor. Por favor, intenta de nuevo más tarde.'
         });
+        // Cargar datos de ejemplo en caso de error
+        loadMockProducts();
       } finally {
         setLoading(false);
       }
     };
+  
     
     fetchProducts();
   }, []);
+  
+  // Función para cargar datos de ejemplo en caso de error
+  const loadMockProducts = () => {
+    const mockProducts: Product[] = [
+      {
+        id: 1,
+        name: "Laptop HP Pavilion",
+        brand: "HP",
+        category: "Computadoras",
+        price: 899.99,
+        stock: 15,
+        image: "https://via.placeholder.com/300x200",
+        description: "Laptop potente para trabajo y estudios con procesador i5.",
+        specifications: {
+          processor: "Intel Core i5",
+          ram: "8GB",
+          storage: "512GB SSD",
+          screen: "15.6 pulgadas"
+        },
+        rating: 4.2,
+        recommendation: 'high'
+      },
+      // Más productos de ejemplo...
+    ];
+    
+    setAllProducts(mockProducts);
+    setFilteredProducts(mockProducts);
+  };
   
   // Filtrar productos según la búsqueda
   const handleSearch = (value: string) => {

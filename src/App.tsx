@@ -1,5 +1,5 @@
 // src/App.tsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
 import es_ES from 'antd/lib/locale/es_ES';
@@ -16,8 +16,12 @@ import NotFoundPage from './pages/NotFoundPage';
 import { AuthProvider } from './context/AuthContext';
 
 import './App.css';
+import { configureAxios } from './components/config/axiosConfig';
 
 const App: React.FC = () => {
+  useEffect(() => {
+    configureAxios();
+  }, []);
   return (
     <ConfigProvider locale={es_ES}>
       <AuthProvider>
