@@ -1,46 +1,136 @@
-# Getting Started with Create React App
+# Buy n Large - Aplicación Web Responsive
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Este repositorio contiene una aplicación web responsive desarrollada con React, TypeScript y Ant Design. La aplicación incluye un dashboard de administración, un catálogo de productos y un chatbot virtual.
 
-## Available Scripts
+## Características
 
-In the project directory, you can run:
+- 📱 Diseño completamente responsive (móvil, tablet, escritorio)
+- 🤖 Chatbot virtual interactivo
+- 📊 Dashboard con visualización de datos
+- 🛍️ Catálogo de productos con filtros y búsqueda
+- 🔍 Funcionalidad de búsqueda en tiempo real
+- 🎨 Interfaz moderna con Ant Design
+- 📝 Desarrollado con TypeScript para mayor seguridad de tipos
 
-### `npm start`
+## Tecnologías Utilizadas
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+- React 18
+- TypeScript
+- Ant Design 5
+- React Router 6
+- Recharts (para visualizaciones)
+- CSS Modules
+- Axios
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+## Estructura del Proyecto
 
-### `npm test`
+```
+src/
+├── components/
+│   ├── chatbot/
+│   │   ├── ChatBot.tsx
+│   │   ├── ChatBot.module.css
+│   │   └── ChatBot.styles.ts
+│   └── layout/
+│       ├── ResponsiveLayout.tsx
+│       └── ResponsiveLayout.css
+├── pages/
+│   ├── ChatbotPage.tsx
+│   ├── ChatbotPage.css
+│   ├── DashboardPage.tsx
+│   ├── ProductsPage.tsx
+│   └── NotFoundPage.tsx
+├── services/
+│   └── ConversationService.ts
+├── App.tsx
+├── App.css
+└── index.tsx
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Instalación
 
-### `npm run build`
+1. Clona este repositorio:
+   ```bash
+   git clone https://github.com/tu-usuario/buy-n-large-app.git
+   cd buy-n-large-app
+   ```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+2. Instala las dependencias:
+   ```bash
+   npm install
+   ```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+3. Inicia el servidor de desarrollo:
+   ```bash
+   npm start
+   ```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+4. Abre http://localhost:3000 en tu navegador.
 
-### `npm run eject`
+## Scripts Disponibles
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+- `npm start` - Inicia el servidor de desarrollo
+- `npm test` - Ejecuta las pruebas
+- `npm run build` - Compila la aplicación para producción
+- `npm run lint` - Ejecuta ESLint para verificar el código
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Componentes Principales
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+### ResponsiveLayout
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+El componente `ResponsiveLayout` proporciona un diseño adaptable para toda la aplicación. Incluye:
 
-## Learn More
+- Menú lateral colapsable para escritorio
+- Menú de cajón para dispositivos móviles
+- Cabecera con opciones de usuario
+- Área de contenido principal
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### ChatBot
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+El componente `ChatBot` implementa una interfaz de chat interactiva con las siguientes características:
+
+- Mensajes con diferentes estilos para usuario y bot
+- Historial de conversación persistente
+- Indicador de carga durante la comunicación con el servidor
+- Diseño responsive para diferentes tamaños de pantalla
+
+### Páginas
+
+- `DashboardPage`: Muestra gráficos y estadísticas de inventario y ventas
+- `ProductsPage`: Catálogo de productos con filtros y búsqueda
+- `ChatbotPage`: Interfaz de chat con el asistente virtual
+- `NotFoundPage`: Página 404 para rutas no encontradas
+
+## API y Servicios
+
+La aplicación se comunica con una API backend a través de varios servicios:
+
+- `ConversationService`: Gestiona la comunicación con el chatbot
+- `ProductService`: Obtiene información de productos (no incluido en este ejemplo)
+- `AnalyticsService`: Obtiene datos para el dashboard (no incluido en este ejemplo)
+
+## Estilos Responsive
+
+El diseño responsive se implementa a través de:
+
+- CSS Modules para componentes específicos
+- Media queries para adaptarse a diferentes tamaños de pantalla
+- Flexbox y Grid para layouts flexibles
+- Variables CSS para mantener consistencia en colores y espaciados
+
+## Consideraciones para Móviles
+
+- Menú de navegación adaptado para pantallas pequeñas
+- Ajustes de tamaño de fuente y espaciado para mejor legibilidad
+- Interfaces de usuario optimizadas para interacción táctil
+- Dirección de flexbox ajustada para vistas en columna en móviles
+
+## Mejores Prácticas Implementadas
+
+- Componentes tipados con TypeScript
+- Estilos modulares y reutilizables
+- Separación de lógica y presentación
+- Gestión eficiente de estados
+- Comentarios JSDoc para documentación
+- Código limpio y bien organizado
+
